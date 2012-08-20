@@ -20,8 +20,8 @@ SOURCES += main.cpp \
     descriptors/galif.cpp \
     descriptors/image_sampler.cpp \
     descriptors/utilities.cpp \
-    compute_descriptors.cpp \
-    ordered_push_back.cpp
+    io/compute_descriptors.cpp \
+    io/ordered_push_back.cpp
 
 
 HEADERS += util/types.hpp \
@@ -36,5 +36,5 @@ HEADERS += util/types.hpp \
     descriptors/gist.hpp \
     descriptors/shog.hpp \
     descriptors/galif.hpp \
-    compute_descriptors.hpp \
-    ordered_push_back.hpp
+    io/compute_descriptors.hpp \
+    io/ordered_push_back.hpp

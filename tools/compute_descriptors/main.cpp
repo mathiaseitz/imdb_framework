@@ -19,11 +19,12 @@ the terms of the BSD license (see the LICENSE file).
 #include <io/property_writer.hpp>
 #include <io/cmdline.hpp>
 #include <io/filelist.hpp>
+#include <io/compute_descriptors.hpp>
 #include <util/progress.hpp>
 #include <util/types.hpp>
 #include <descriptors/generator.hpp>
 
-#include "compute_descriptors.hpp"
+
 
 using namespace imdb;
 
