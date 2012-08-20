@@ -19,7 +19,9 @@ SOURCES += main.cpp \
     descriptors/shog.cpp \
     descriptors/galif.cpp \
     descriptors/image_sampler.cpp \
-    descriptors/utilities.cpp
+    descriptors/utilities.cpp \
+    compute_descriptors.cpp \
+    ordered_push_back.cpp
 
 
 HEADERS += util/types.hpp \
@@ -33,4 +35,6 @@ HEADERS += util/types.hpp \
     descriptors/tinyimage.hpp \
     descriptors/gist.hpp \
     descriptors/shog.hpp \
-    descriptors/galif.hpp
+    descriptors/galif.hpp \
+    compute_descriptors.hpp \
+    ordered_push_back.hpp

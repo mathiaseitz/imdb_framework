@@ -16,8 +16,6 @@ the terms of the BSD license (see the LICENSE file).
 #include <boost/thread.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include <opencv2/highgui/highgui.hpp>
-
 #include <io/property_writer.hpp>
 #include <io/cmdline.hpp>
 #include <io/filelist.hpp>
@@ -25,204 +23,12 @@ the terms of the BSD license (see the LICENSE file).
 #include <util/types.hpp>
 #include <descriptors/generator.hpp>
 
+#include "compute_descriptors.hpp"
 
 using namespace imdb;
 
-class ordered_push_back
-{
-public:
 
-    ordered_push_back(shared_ptr<PropertyWriter> writer)
-        : _writer(writer)
-        , _numWrittenElements(0)
-    {}
-
-    bool push_back(size_t index, const boost::any& element)
-    {
-        boost::lock_guard<boost::mutex> locked(_mutex);
-
-        // since the things we have written so far is just a linear
-        // index of features, this condition must hold, i.e. all elements
-        // we get must be at the end or behind of what has been written so far
-        assert(index >= _numWrittenElements);
-
-        _queue.push(queue_element(index, make_shared<boost::any>(element)));
-
-        // *linearly* write stuff into the output vector
-        while (!_queue.empty() && _queue.top().first == _numWrittenElements)
-        {
-            _writer->push_back(*_queue.top().second);
-            _queue.pop();
-            _numWrittenElements++;
-        }
-
-        return true;
-    }
-
-    bool empty_buffer() const
-    {
-        return _queue.empty();
-    }
-
-private:
-
-    boost::shared_ptr<PropertyWriter> _writer;
-    std::size_t _numWrittenElements;
-    boost::mutex _mutex;
-
-    typedef std::pair<size_t, boost::shared_ptr<boost::any> > queue_element;
-    typedef std::greater<queue_element>                       queue_compare;
-    typedef std::priority_queue<queue_element, std::vector<queue_element>, queue_compare> queue_t;
-
-    queue_t _queue;
-};
-
-class compute_descriptors : boost::noncopyable
-{
-    typedef std::pair<std::string, boost::shared_ptr<ordered_push_back> > string_writer_pair;
-
-public:
-
-    compute_descriptors(boost::shared_ptr<Generator> generator, const FileList& files)
-        : _generator(generator)
-        , _files(files)
-        , _index(0)
-        , _error(false)
-        , _started(false)
-        , _finished(false)
-    {}
-
-
-    void add_writer(const std::string& name, boost::shared_ptr<PropertyWriter> writer)
-    {
-        _writers.push_back(std::make_pair(name, boost::make_shared<ordered_push_back>(writer)));
-    }
-
-    bool start(int num_threads)
-    {
-        assert(num_threads > 0);
-        using namespace boost;
-
-        if (_started) return false;
-
-        _started = true;
-        _datetime = QDateTime::currentDateTime();
-
-        thread_group pool;
-        for (int i = 0; i < num_threads; i++)
-        {
-            pool.add_thread(new thread(std::mem_fun(&compute_descriptors::_thread), this, _generator));
-        }
-
-        pool.join_all();
-
-        _finished = true;
-        _seconds = _datetime.secsTo(QDateTime::currentDateTime());
-
-        for (size_t i = 0; i < _writers.size(); i++)
-        {
-            _error |= !_writers[i].second->empty_buffer();
-        }
-
-        return (!_error);
-    }
-
-    size_t current() const
-    {
-        boost::lock_guard<boost::mutex> lock(_mutex);
-        return _index;
-    }
-
-    bool finished() const
-    {
-        return _finished;
-    }
-
-    index_t num_files() const
-    {
-        return _files.size();
-    }
-
-    int computation_time() const
-    {
-        // precondition: finished() == true
-        return _seconds;
-    }
-private:
-
-    void _thread(boost::shared_ptr<Generator> gen)
-    {
-        while (!_error)
-        {
-            size_t current;
-            anymap_t data;
-
-            {
-                boost::lock_guard<boost::mutex> lock(_mutex);
-                if (_index == _files.size()) break;
-                current = _index;
-                _index++;
-
-            }
-
-            string filename = _files.get_filename(current);
-
-            try
-            {
-                // second parmeter: flags >0 means that the loaded image is forced to be a 3-channel color image
-                //
-                // Although this is not explicitly stated in the OpenCV docs, the channel
-                // order is BGR, this has been tested by Mathias 08.June.2011 for both png
-                // and jpg images. I.e. the following code
-                // cv::Mat img = cv::imread("/Users/admin/tmp/blue.jpg");
-                // cv::Vec3b v = img.at<cv::Vec3b>(0,0);
-                // will result in the blue information at v[0], green at v[1] and red at v[2]
-                mat_8uc3_t image = cv::imread(filename, 1);
-                data["image"] = image;
-                data["image_filename"] = filename;
-                gen->compute(data);
-            }
-
-            catch(cv::Exception& e)
-            {
-                // the original opencv exception message is very poor -- make it more clear
-                // and more importantly give the problematic filename
-                throw std::runtime_error("compute_descriptors: cv::imread failed for file: " + filename);
-            }
-
-            catch (std::exception& e)
-            {
-                std::cerr << e.what() << std::endl;
-                _error = true;
-                return;
-            }
-
-            for (std::vector<string_writer_pair>::const_iterator wi = _writers.begin(); wi != _writers.end(); ++wi)
-            {
-                anymap_t::const_iterator ri = data.find(wi->first);
-                if (ri != data.end()) wi->second->push_back(current, ri->second);
-            }
-        }
-    }
-
-private:
-
-    boost::shared_ptr<Generator>    _generator;
-    std::vector<string_writer_pair> _writers;
-    FileList                        _files;
-
-    volatile size_t _index;
-    volatile bool _error;
-    volatile bool _started;
-    volatile bool _finished;
-
-    QDateTime _datetime;
-    int       _seconds;
-
-    mutable boost::mutex _mutex;
-};
-
-void progress_observer(const compute_descriptors& cd)
+void progress_observer(const ComputeDescriptors& cd)
 {
     size_t lastindex = 0;
     int running_sum_time = 0;
@@ -420,7 +226,7 @@ public:
         }
 
         // initialize a computing object
-        compute_descriptors cd(generator, files);
+        ComputeDescriptors cd(generator, files);
 
         // add writers for properties offered by the generator
         PropertyWriters::properties_t& propertyWriters = generator->propertyWriters().get();
