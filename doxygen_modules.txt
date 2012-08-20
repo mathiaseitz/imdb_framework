@@ -1,0 +1,48 @@
+// Contains the module structure of the imagedb framework
+// This is used by Doxygen
+
+
+/**
+ * @defgroup search Search module
+ *
+ * @brief This module contains implementations of search algorithms, such as a basic linear search, a bag-of-features
+ * search using an InvertedIndex as well as distance and tf-idf functions.
+ */
+
+/**
+ * @defgroup distfn distance functions
+ * @ingroup search
+ *
+ * @brief Contains implementations of several distance functions to be used
+ * with e.g. kmeans and linear_search.
+ */
+
+/**
+ * @defgroup tfidf tf-idf functions
+ * @ingroup search
+ *
+ * @brief Contains implementations of several tf-idf functions to be used
+ * with the InvertedIndex class.
+ * We use the following definitions:
+ * - num_documents: total number of documents in the InvertedIndex
+ * - freq_term_coll: frequency of term t in the whole collection, i.e. all documents added to the InvertedIndex
+ * - freq_term_doc: frequency of term t in a given document
+ */
+
+/**
+ * @defgroup generators Feature Generators
+ *
+ * @brief Contains all feature generatures that take an image as input and extract features out of it.
+ */
+ 
+/**
+ * @defgroup io IO module
+ *
+ * @brief Contains all input/output related classes and functions.
+ */
+
+
+/**
+ * @defgroup util Utilities
+ * @brief Contains utilities required for the imagedb framework.
+ */
